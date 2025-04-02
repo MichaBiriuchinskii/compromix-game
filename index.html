@@ -1,0 +1,1455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Connections Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        #game-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+        #visualization {
+            width: 100%;
+            height: 400px;
+            border: 1px solid #ddd;
+            margin: 20px 0;
+            position: relative;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .anchor-word {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            text-align: center;
+            z-index: 10;
+        }
+        .guess-word {
+            position: absolute;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            z-index: 5;
+            font-size: 0;  /* Hide text by default */
+            overflow: hidden;
+            white-space: nowrap;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .guess-word:hover {
+            font-size: 12px;  /* Show text on hover */
+            z-index: 10;  /* Bring to front on hover */
+            transform: scale(1.1);  /* Slightly enlarge on hover */
+            box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+        }
+        
+        .perfect-match {
+            border: 2px solid gold;
+            box-shadow: 0 0 12px gold;
+        }
+        #word-form {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        #word-input {
+            flex-grow: 1;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px 0 0 4px;
+        }
+        #submit-btn {
+            padding: 10px 20px;
+            background-color: #4a6ee0;
+            color: white;
+            border: none;
+            border-radius: 0 4px 4px 0;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        #submit-btn:hover {
+            background-color: #3a5ecc;
+        }
+        .connection-line {
+            position: absolute;
+            background-color: #ddd;
+            transform-origin: 0 0;
+            z-index: 0;
+            opacity: 0.5;
+        }
+        #stats {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+        }
+        .stat-box {
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4a6ee0;
+        }
+        .stat-label {
+            font-size: 14px;
+            color: #666;
+        }
+        #hint-btn {
+            display: block;
+            margin: 20px auto 0;
+            padding: 8px 16px;
+            background-color: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        #hint-btn:hover {
+            background-color: #e5e5e5;
+        }
+        .tooltip {
+            position: absolute;
+            background-color: rgba(0,0,0,0.8);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 100;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        #history {
+            margin-top: 20px;
+        }
+        #history h3 {
+            margin-bottom: 10px;
+        }
+        #history-list {
+            padding-left: 20px;
+        }
+        #history-list li {
+            margin-bottom: 4px;
+        }
+        .invalid-word {
+            color: #d9534f;
+            text-decoration: line-through;
+        }
+        #word-pair {
+            text-align: center;
+            margin-top: 5px;
+            margin-bottom: 20px;
+            font-weight: bold;
+            color: #333;
+        }
+        #word-pair-selector {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        #loading-indicator {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        .spinner {
+            border: 6px solid #f3f3f3;
+            border-top: 6px solid #4a6ee0;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        #error-message {
+            color: #d9534f;
+            text-align: center;
+            margin: 10px 0;
+            display: none;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-connecting {
+            background-color: #f0ad4e;
+            animation: pulse 1.5s infinite;
+        }
+        .status-connected {
+            background-color: #5cb85c;
+        }
+        .status-error {
+            background-color: #d9534f;
+        }
+        @keyframes pulse {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
+        }
+        #api-status {
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        #preloaded-pairs {
+            margin-top: 20px;
+        }
+        .word-pair-btn {
+            margin: 0 5px 5px 0;
+            padding: 8px 12px;
+            background-color: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .word-pair-btn:hover {
+            background-color: #e5e5e5;
+        }
+        .language-tag {
+            display: inline-block;
+            padding: 2px 6px;
+            background-color: #e9ecef;
+            color: #495057;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-left: 6px;
+        }
+        .language-selector {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .language-btn {
+            padding: 6px 12px;
+            margin: 0 5px;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .language-btn.active {
+            background-color: #4a6ee0;
+            color: white;
+            border-color: #4a6ee0;
+        }
+        .custom-pair-form {
+            display: flex;
+            margin-top: 10px;
+            justify-content: center;
+        }
+        .custom-pair-form input {
+            padding: 8px;
+            margin-right: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 120px;
+        }
+        .custom-pair-form button {
+            padding: 8px 12px;
+            background-color: #4a6ee0;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .tab-container {
+            margin-bottom: 20px;
+        }
+        .tab-buttons {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+        }
+        .tab-btn {
+            padding: 10px 20px;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            border-radius: 4px 4px 0 0;
+            margin-right: 5px;
+            cursor: pointer;
+        }
+        .tab-btn.active {
+            background-color: white;
+            border-bottom: 2px solid white;
+            margin-bottom: -1px;
+            font-weight: bold;
+        }
+        .tab-content {
+            display: none;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .viz-tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 0;
+        }
+        
+        .viz-tab {
+            padding: 8px 16px;
+            cursor: pointer;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            margin-right: 5px;
+            border-radius: 4px 4px 0 0;
+        }
+        
+        .viz-tab.active {
+            background-color: white;
+            border-bottom: 2px solid white;
+            margin-bottom: -1px;
+            font-weight: bold;
+        }
+        
+        .viz-content {
+            display: none;
+            width: 100%;
+            height: 400px;
+            position: relative;
+        }
+        
+        .viz-content.active {
+            display: block;
+        }
+        
+        #viz-3d {
+            width: 100%;
+            height: 400px;
+            background-color: #f8f9fa;
+            position: relative;
+        }
+        
+        .top-words-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(0,0,0,0.6);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            z-index: 20;
+        }
+        
+        .word-label {
+            position: absolute;
+            background-color: rgba(0,0,0,0.7);
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            z-index: 15;
+        }
+        
+        .viz-controls {
+            position: absolute;
+            left: 10px;
+            bottom: 10px;
+            z-index: 20;
+        }
+        
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255,255,255,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 30;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading-indicator">
+        <div class="spinner"></div>
+        <div>Loading...</div>
+    </div>
+    
+    <div id="game-container">
+        <h1>Word Connections Game</h1>
+        
+        <div id="api-status">
+            <span class="status-indicator status-connecting"></span>
+            Connecting to API...
+        </div>
+        
+        <div id="error-message"></div>
+        
+        <div class="language-selector">
+            <button class="language-btn active" data-lang="en">English</button>
+            <button class="language-btn" data-lang="fr">Français</button>
+        </div>
+        
+        <div class="tab-container">
+            <div class="tab-buttons">
+                <button class="tab-btn active" data-tab="preset-pairs">Preset Pairs</button>
+                <button class="tab-btn" data-tab="custom-pair">Custom Pair</button>
+            </div>
+            <div class="tab-content active" id="preset-pairs">
+                <div id="en-pairs">
+                    <button class="word-pair-btn" data-word1="mountain" data-word2="ocean">mountain - ocean</button>
+                    <button class="word-pair-btn" data-word1="fire" data-word2="water">fire - water</button>
+                    <button class="word-pair-btn" data-word1="happy" data-word2="sad">happy - sad</button>
+                    <button class="word-pair-btn" data-word1="work" data-word2="play">work - play</button>
+                    <button class="word-pair-btn" data-word1="sun" data-word2="moon">sun - moon</button>
+                </div>
+                <div id="fr-pairs" style="display: none;">
+                    <button class="word-pair-btn" data-word1="montagne" data-word2="océan">montagne - océan</button>
+                    <button class="word-pair-btn" data-word1="feu" data-word2="eau">feu - eau</button>
+                    <button class="word-pair-btn" data-word1="heureux" data-word2="triste">heureux - triste</button>
+                    <button class="word-pair-btn" data-word1="travail" data-word2="jeu">travail - jeu</button>
+                    <button class="word-pair-btn" data-word1="soleil" data-word2="lune">soleil - lune</button>
+                </div>
+            </div>
+            <div class="tab-content" id="custom-pair">
+                <div class="custom-pair-form">
+                    <input type="text" id="custom-word1" placeholder="First word">
+                    <input type="text" id="custom-word2" placeholder="Second word">
+                    <button id="custom-pair-btn">Create Pair</button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="word-pair">Find words between <span id="word1">MOUNTAIN</span> and <span id="word2">OCEAN</span> <span id="language-tag" class="language-tag">EN</span></div>
+        
+        <div id="word-form">
+            <input type="text" id="word-input" placeholder="Enter a word...">
+            <button id="submit-btn">Submit</button>
+        </div>
+        
+        <div id="visualization">
+            <div class="viz-tabs">
+                <div class="viz-tab active" data-viz="2d">2D View</div>
+                <div class="viz-tab" data-viz="3d">3D View</div>
+            </div>
+            
+            <!-- Create containers for both visualizations -->
+            <div class="viz-content active" id="viz-2d">
+                <!-- This will contain your existing 2D visualization -->
+                <div id="visualization">
+                    <div class="tooltip" id="tooltip"></div>
+                </div>
+            </div>
+            
+            <div class="viz-content" id="viz-3d">
+                <!-- This will contain the 3D visualization -->
+                <div class="top-words-badge">Showing 0 closest words</div>
+                <div class="viz-controls">
+                    <button id="load-top-words">Show 1000 Closest Words</button>
+                </div>
+                <div class="loading-overlay" style="display:none;">
+                    <div class="spinner"></div>
+                    <div>Loading word space...</div>
+                </div>
+            </div>
+            <!-- Words will be placed here by JavaScript -->
+            <div class="tooltip" id="tooltip"></div>
+        </div>
+        
+        <div id="stats">
+            <div class="stat-box">
+                <div class="stat-value" id="guesses-count">0</div>
+                <div class="stat-label">Guesses</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="best-score">0%</div>
+                <div class="stat-label">Best Score</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="best-word">-</div>
+                <div class="stat-label">Best Word</div>
+            </div>
+        </div>
+        
+        <button id="hint-btn">Get a Hint</button>
+        
+        <div id="history">
+            <h3>History</h3>
+            <ul id="history-list"></ul>
+        </div>
+    </div>
+
+
+    
+    <script>
+
+            // 3D visualization variables
+            let scene, camera, renderer, controls;
+            let wordObjects = {};
+            let isTopWordsLoaded = false;
+            
+            // Initialize 3D visualization
+            function init3DVisualization() {
+                // Create scene
+                scene = new THREE.Scene();
+                scene.background = new THREE.Color(0xf8f9fa);
+                
+                // Create camera
+                camera = new THREE.PerspectiveCamera(
+                    75, 
+                    document.getElementById('viz-3d').clientWidth / document.getElementById('viz-3d').clientHeight, 
+                    0.1, 
+                    1000
+                );
+                camera.position.z = 5;
+                
+                // Create renderer
+                renderer = new THREE.WebGLRenderer({ antialias: true });
+                renderer.setSize(
+                    document.getElementById('viz-3d').clientWidth, 
+                    document.getElementById('viz-3d').clientHeight
+                );
+                document.getElementById('viz-3d').appendChild(renderer.domElement);
+                
+                // Add orbit controls
+                controls = new THREE.OrbitControls(camera, renderer.domElement);
+                controls.enableDamping = true;
+                controls.dampingFactor = 0.25;
+                
+                // Add ambient light
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+                scene.add(ambientLight);
+                
+                // Add directional light
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(1, 1, 1);
+                scene.add(directionalLight);
+                
+                // Start animation loop
+                animate();
+                
+                // Handle window resize
+                window.addEventListener('resize', onWindowResize);
+            }
+            
+            // Animation loop
+            function animate() {
+                requestAnimationFrame(animate);
+                controls.update();
+                renderer.render(scene, camera);
+                
+                // Update labels for visible objects
+                updateWordLabels();
+            }
+            
+            // Update word labels based on camera position
+            function updateWordLabels() {
+                // Clear existing labels
+                document.querySelectorAll('.word-label').forEach(label => {
+                    label.remove();
+                });
+                
+                // Only show labels for important objects (anchors, midpoint, guesses)
+                const objectsToLabel = Object.keys(wordObjects).filter(key => {
+                    return ['word1', 'word2', 'midpoint'].includes(key) || key.startsWith('guess_');
+                });
+                
+                // Add labels
+                objectsToLabel.forEach(key => {
+                    const obj = wordObjects[key];
+                    if (!obj || !obj.mesh) return;
+                    
+                    // Project 3D position to 2D screen coordinates
+                    const position = obj.mesh.position.clone();
+                    position.project(camera);
+                    
+                    // Convert to screen coordinates
+                    const x = (position.x * 0.5 + 0.5) * renderer.domElement.width;
+                    const y = (-position.y * 0.5 + 0.5) * renderer.domElement.height;
+                    
+                    // Check if object is in front of camera (z < 1)
+                    if (position.z < 1) {
+                        // Create label
+                        const label = document.createElement('div');
+                        label.className = 'word-label';
+                        label.textContent = obj.word || 'Point';
+                        label.style.left = `${x}px`;
+                        label.style.top = `${y}px`;
+                        
+                        // Add to DOM
+                        document.getElementById('viz-3d').appendChild(label);
+                    }
+                });
+            }
+            
+            // Handle window resize
+            function onWindowResize() {
+                camera.aspect = document.getElementById('viz-3d').clientWidth / document.getElementById('viz-3d').clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(document.getElementById('viz-3d').clientWidth, document.getElementById('viz-3d').clientHeight);
+            }
+            
+            // Add a sphere to the scene
+            function addSphere(position, size, color, opacity = 1) {
+                const geometry = new THREE.SphereGeometry(size, 32, 32);
+                const material = new THREE.MeshStandardMaterial({ 
+                    color: color,
+                    transparent: opacity < 1,
+                    opacity: opacity
+                });
+                const sphere = new THREE.Mesh(geometry, material);
+                sphere.position.set(position[0], position[1], position[2]);
+                scene.add(sphere);
+                return sphere;
+            }
+            
+            // Add a line between two points
+            function addLine(from, to, color) {
+                const geometry = new THREE.BufferGeometry().setFromPoints([
+                    new THREE.Vector3(from[0], from[1], from[2]),
+                    new THREE.Vector3(to[0], to[1], to[2])
+                ]);
+                const material = new THREE.LineBasicMaterial({ color: color, opacity: 0.5, transparent: true });
+                const line = new THREE.Line(geometry, material);
+                scene.add(line);
+                return line;
+            }
+            
+            // Load top words nearest to midpoint
+            async function loadTopWords() {
+                if (isTopWordsLoaded) return;
+                
+                const loadingOverlay = document.querySelector('#viz-3d .loading-overlay');
+                loadingOverlay.style.display = 'flex';
+                
+                try {
+                    const response = await fetch(`${getApiBaseUrl()}/top_midpoint_words`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            word_pair: [currentPair.word1, currentPair.word2],
+                            count: 1000,
+                            language: currentLanguage,
+                            include_pca: true
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`API error: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    const pcaData = data.pca_data;
+                    
+                    if (!pcaData) {
+                        throw new Error('No PCA data returned');
+                    }
+                    
+                    // Clear existing visualization
+                    while(scene.children.length > 0) { 
+                        scene.remove(scene.children[0]); 
+                    }
+                    wordObjects = {};
+                    
+                    // Add ambient and directional light back
+                    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+                    scene.add(ambientLight);
+                    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                    directionalLight.position.set(1, 1, 1);
+                    scene.add(directionalLight);
+                    
+                    // Add anchor words
+                    const anchor1 = pcaData.anchor1;
+                    const anchor2 = pcaData.anchor2;
+                    const midpoint = pcaData.midpoint;
+                    
+                    // Add to scene
+                    wordObjects.word1 = {
+                        word: currentPair.word1,
+                        mesh: addSphere(anchor1.coords, 0.2, 0xff7676)
+                    };
+                    
+                    wordObjects.word2 = {
+                        word: currentPair.word2,
+                        mesh: addSphere(anchor2.coords, 0.2, 0x76a8ff)
+                    };
+                    
+                    wordObjects.midpoint = {
+                        word: 'MIDPOINT',
+                        mesh: addSphere(midpoint.coords, 0.15, 0xffd700, 0.8)
+                    };
+                    
+                    // Add lines connecting anchors to midpoint
+                    addLine(anchor1.coords, midpoint.coords, 0xff7676);
+                    addLine(anchor2.coords, midpoint.coords, 0x76a8ff);
+                    
+                    // Add top words as small dots
+                    pcaData.top_words.forEach((wordData, index) => {
+                        // Scale dot size based on index (higher rank = larger dot)
+                        const size = 0.05 + (0.05 * (1 - (index / pcaData.top_words.length)));
+                        // Adjust opacity based on rank too
+                        const opacity = 0.3 + (0.5 * (1 - (index / pcaData.top_words.length)));
+                        
+                        // Color gradient from yellow to blue
+                        const blueComponent = Math.min(255, 100 + Math.floor(155 * (index / pcaData.top_words.length)));
+                        const redComponent = Math.min(255, 100 + Math.floor(155 * (1 - (index / pcaData.top_words.length))));
+                        const color = (redComponent << 16) | (120 << 8) | blueComponent;
+                        
+                        wordObjects[`top_${index}`] = {
+                            word: wordData.word,
+                            mesh: addSphere(wordData.coords, size, color, opacity)
+                        };
+                    });
+                    
+                    // Add user guesses
+                    guessedWords.forEach((guess, index) => {
+                        // Find this word in the top words if available
+                        const topWordMatch = pcaData.top_words.find(w => w.word === guess.word);
+                        
+                        if (topWordMatch) {
+                            // We have coordinates for this guess
+                            const size = 0.1 + (guess.score * 0.1);
+                            
+                            // Color based on score (purple gradient)
+                            const intensity = Math.floor(guess.score * 255);
+                            const r = Math.floor(200 - intensity/3);
+                            const g = Math.floor(100 + intensity/2);
+                            const b = 200;
+                            const color = (r << 16) | (g << 8) | b;
+                            
+                            wordObjects[`guess_${index}`] = {
+                                word: guess.word,
+                                mesh: addSphere(topWordMatch.coords, size, color, 1.0)
+                            };
+                        }
+                    });
+                    
+                    // Update badge
+                    document.querySelector('.top-words-badge').textContent = 
+                        `Showing ${pcaData.top_words.length} closest words`;
+                    
+                    isTopWordsLoaded = true;
+                } catch (error) {
+                    console.error('Error loading top words:', error);
+                    document.querySelector('.top-words-badge').textContent = 
+                        'Error loading word space';
+                } finally {
+                    loadingOverlay.style.display = 'none';
+                }
+            }
+            
+            // Set up tab switching
+            document.querySelectorAll('.viz-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    // Update active tab
+                    document.querySelectorAll('.viz-tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    
+                    // Update active content
+                    document.querySelectorAll('.viz-content').forEach(c => c.classList.remove('active'));
+                    const vizType = tab.getAttribute('data-viz');
+                    document.getElementById(`viz-${vizType}`).classList.add('active');
+                    
+                    // Initialize 3D viz if needed
+                    if (vizType === '3d' && !scene) {
+                        init3DVisualization();
+                    }
+                    
+                    // Trigger resize to fix any layout issues
+                    window.dispatchEvent(new Event('resize'));
+                });
+            });
+            
+            // Set up load top words button
+            document.getElementById('load-top-words').addEventListener('click', loadTopWords);
+            
+            // Update addGuessToVisualization to also add to 3D view if active
+            const originalAddGuessToVisualization = addGuessToVisualization;
+            addGuessToVisualization = function(word, score, isValid) {
+                // Call original function for 2D view
+                originalAddGuessToVisualization(word, score, isValid);
+                
+                // If 3D view is initialized and top words are loaded, add to 3D view
+                if (scene && isTopWordsLoaded) {
+                    // Check if the scene is active before updating it
+                    if (document.getElementById('viz-3d').classList.contains('active')) {
+                        // Reload visualization to include the new guess
+                        loadTopWords();
+                    }
+                }
+            };
+            
+        // Configuration
+        const config = {
+            // API Config - change this when deploying
+            api: {
+                local: 'http://localhost:8000',
+                production: 'https://Clemspace.pythonanywhere.com'
+            },
+            // Use local for development, production for deployment
+            useLocalApi: true
+        };
+        
+        // Get the API base URL based on configuration
+        function getApiBaseUrl() {
+            return config.useLocalApi ? config.api.local : config.api.production;
+        }
+        
+        // Game state
+        let currentPair = { word1: 'mountain', word2: 'ocean' }
+        let currentLanguage = 'en';
+        let guessedWords = [];
+        let bestScore = 0;
+        let bestWord = '';
+        let apiConnected = false;
+        
+        // DOM elements
+        const visualization = document.getElementById('visualization');
+        const wordInput = document.getElementById('word-input');
+        const submitBtn = document.getElementById('submit-btn');
+        const historyList = document.getElementById('history-list');
+        const guessesCount = document.getElementById('guesses-count');
+        const bestScoreEl = document.getElementById('best-score');
+        const bestWordEl = document.getElementById('best-word');
+        const hintBtn = document.getElementById('hint-btn');
+        const word1El = document.getElementById('word1');
+        const word2El = document.getElementById('word2');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const errorMessage = document.getElementById('error-message');
+        const apiStatus = document.getElementById('api-status');
+        const languageTag = document.getElementById('language-tag');
+        const languageBtns = document.querySelectorAll('.language-btn');
+        const wordPairButtons = document.querySelectorAll('.word-pair-btn');
+        const enPairsDiv = document.getElementById('en-pairs');
+        const frPairsDiv = document.getElementById('fr-pairs');
+        const customWord1Input = document.getElementById('custom-word1');
+        const customWord2Input = document.getElementById('custom-word2');
+        const customPairBtn = document.getElementById('custom-pair-btn');
+        const tabButtons = document.querySelectorAll('.tab-btn');
+        const tabContents = document.querySelectorAll('.tab-content');
+        
+        // Show loading indicator
+        function showLoading() {
+            loadingIndicator.style.display = 'flex';
+        }
+        
+        // Hide loading indicator
+        function hideLoading() {
+            loadingIndicator.style.display = 'none';
+        }
+        
+        // Show error message
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            setTimeout(() => {
+                errorMessage.style.display = 'none';
+            }, 5000);
+        }
+        
+        // Update API status indicator
+        function updateApiStatus(status) {
+            const apiStatusEl = document.getElementById('api-status');
+            if (!apiStatusEl) {
+                console.error('API status element not found');
+                return; // Exit if element not found
+            }
+            
+            // Create the indicator if it doesn't exist
+            let statusIndicator = apiStatusEl.querySelector('.status-indicator');
+            if (!statusIndicator) {
+                statusIndicator = document.createElement('span');
+                statusIndicator.className = 'status-indicator';
+                apiStatusEl.appendChild(statusIndicator);
+            }
+            
+            // Update classes
+            statusIndicator.className = 'status-indicator';
+            
+            // Clear and update content
+            if (status === 'connecting') {
+                statusIndicator.classList.add('status-connecting');
+                apiStatusEl.innerHTML = '';
+                apiStatusEl.appendChild(statusIndicator);
+                apiStatusEl.appendChild(document.createTextNode(' Connecting to API...'));
+            } else if (status === 'connected') {
+                statusIndicator.classList.add('status-connected');
+                apiStatusEl.innerHTML = '';
+                apiStatusEl.appendChild(statusIndicator);
+                apiStatusEl.appendChild(document.createTextNode(' API Connected'));
+                apiConnected = true;
+            } else if (status === 'error') {
+                statusIndicator.classList.add('status-error');
+                apiStatusEl.innerHTML = '';
+                apiStatusEl.appendChild(statusIndicator);
+                apiStatusEl.appendChild(document.createTextNode(' API Connection Error'));
+                apiConnected = false;
+            }
+        }
+        
+        // Check API connection
+        async function checkApiConnection() {
+            updateApiStatus('connecting');
+            
+            try {
+                const response = await fetch(`${getApiBaseUrl()}/`);
+                
+                if (response.ok) {
+                    updateApiStatus('connected');
+                    return true;
+                } else {
+                    updateApiStatus('error');
+                    return false;
+                }
+            } catch (error) {
+                console.error('API connection error:', error);
+                updateApiStatus('error');
+                return false;
+            }
+        }
+        
+        // Initialize the game
+        async function initGame() {
+            // Check API connection
+            const isConnected = await checkApiConnection();
+            
+            if (!isConnected) {
+                showError('Unable to connect to the API. Please try again later.');
+            }
+            
+            // Clear previous game state
+            visualization.innerHTML = '<div class="tooltip" id="tooltip"></div>';
+            historyList.innerHTML = '';
+            guessedWords = [];
+            bestScore = 0;
+            bestWord = '';
+            updateStats();
+            
+            // Update UI
+            word1El.textContent = currentPair.word1.toUpperCase();
+            word2El.textContent = currentPair.word2.toUpperCase();
+            languageTag.textContent = currentLanguage.toUpperCase();
+            
+            // Set up visualization
+            setupVisualization();
+            
+            // Focus on input
+            wordInput.focus();
+        }
+        
+        // Set up the visualization area
+        function setupVisualization() {
+            // Add anchor words
+            createAnchorWord(currentPair.word1, 'left');
+            createAnchorWord(currentPair.word2, 'right');
+        }
+        
+        // Create an anchor word element
+        function createAnchorWord(word, position) {
+            const anchor = document.createElement('div');
+            anchor.className = 'anchor-word';
+            anchor.textContent = word.toUpperCase();
+            
+            if (position === 'left') {
+                anchor.style.left = '50px';
+                anchor.style.top = 'calc(50% - 50px)';
+                anchor.style.backgroundColor = '#ff7676';
+            } else {
+                anchor.style.right = '50px';
+                anchor.style.top = 'calc(50% - 50px)';
+                anchor.style.backgroundColor = '#76a8ff';
+            }
+            
+            visualization.appendChild(anchor);
+            return anchor;
+        }
+        
+        // Handle word submission
+        async function submitWord() {
+            const word = wordInput.value.trim().toLowerCase();
+            
+            if (!word) return;
+            
+            // Check if word has already been guessed
+            if (guessedWords.some(g => g.word === word)) {
+                showError('You already guessed this word!');
+                return;
+            }
+            
+            // Check if it's one of the anchor words
+            if (word === currentPair.word1 || word === currentPair.word2) {
+                showError('That\'s one of the anchor words! Try finding a word between them.');
+                return;
+            }
+            
+            showLoading();
+            
+            try {
+                // Calculate score using API
+                const result = await calculateScore(word);
+                const { score, valid_word, language } = result;
+                
+                // Add to guessed words
+                guessedWords.push({ word, score, valid: valid_word, language });
+                
+                // Sort guessed words by score (descending)
+                guessedWords.sort((a, b) => b.score - a.score);
+                
+                // Update visualization
+                updateVisualization();
+                
+                // Update stats (only count valid words for best score)
+                if (valid_word && score > bestScore) {
+                    bestScore = score;
+                    bestWord = word;
+                }
+                updateStats();
+                
+                // Update history
+                updateHistory();
+                
+                // Clear input
+                wordInput.value = '';
+                wordInput.focus();
+            } catch (error) {
+                console.error('Error submitting word:', error);
+                showError('There was an error processing your word. Please try again.');
+            } finally {
+                hideLoading();
+            }
+            try {
+                if (!apiConnected) {
+                    showError('API not connected. Please check the backend server.');
+                    return;
+                }
+                
+                // Calculate score using API
+                const result = await calculateScore(word);
+                // [rest of the existing code]
+            } catch (error) {
+                console.error('Error submitting word:', error);
+                showError('Error processing your word. Please check the backend connection.');
+            } finally {
+                hideLoading();
+            }
+        
+        }
+        
+        // Calculate similarity score for a word using the API
+        async function calculateScore(word) {
+            try {
+                if (apiConnected) {
+                    const response = await fetch(`${getApiBaseUrl()}/score`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            word: word,
+                            word1: currentPair.word1,
+                            word2: currentPair.word2,
+                            language: currentLanguage
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`API error: ${response.status}`);
+                    }
+                    
+                    return await response.json();
+                    } else {
+                        // API not connected - throw error to be caught by the caller
+                        throw new Error('API not connected');
+                    
+                }
+            } catch (error) {
+                console.error('Error calculating score:', error);
+                // Return a fallback score
+                return {
+                    word: word,
+                    score: Math.random() * 0.5,  // Lower random score
+                    valid_word: false,
+                    language: currentLanguage
+                };
+            }
+        }
+        
+        // Update the entire visualization
+        function updateVisualization() {
+            // Clear previous guesses
+            document.querySelectorAll('.guess-word, .connection-line').forEach(el => el.remove());
+            
+            // Add all guesses to the visualization
+            guessedWords.forEach(guess => {
+                addGuessToVisualization(guess.word, guess.score, guess.valid);
+            });
+        }
+        
+        // Add a guessed word to the visualization
+        function addGuessToVisualization(word, score, isValid = true) {
+            const guess = document.createElement('div');
+            guess.className = 'guess-word';
+            guess.textContent = word.toUpperCase();
+            
+            // Set size based on score (better words are bigger)
+            // Invalid words are smaller
+            const sizeFactor = isValid ? 1 : 0.7;
+            const size = 30 + (score * 40 * sizeFactor);
+            guess.style.width = `${size}px`;
+            guess.style.height = `${size}px`;
+            
+            // Position based on score
+            // For simplicity, we'll position it along a line between the two anchors
+            // with some vertical variation
+            const xPos = 150 + (score * 500); // Scale to fit visualization width
+            
+            // Add some vertical variation to avoid overlaps
+            const yPos = 200 + (Math.sin(xPos / 50) * 80);
+            
+            guess.style.left = `${xPos - size/2}px`;
+            guess.style.top = `${yPos - size/2}px`;
+            
+            // Color based on score (purple gradient)
+            // Invalid words are gray-ish
+            if (isValid) {
+                const intensity = Math.floor(score * 255);
+                guess.style.backgroundColor = `rgb(${200 - intensity/3}, ${100 + intensity/2}, ${200})`;
+            } else {
+                guess.style.backgroundColor = '#aaaaaa';
+            }
+            guess.style.color = score > 0.5 ? 'white' : 'black';
+            
+            // Add strikethrough or opacity for invalid words
+            if (!isValid) {
+                guess.style.opacity = '0.7';
+                guess.style.textDecoration = 'line-through';
+            }
+            
+            // Add tooltip on hover
+            guess.addEventListener('mouseenter', (e) => {
+                const tooltip = document.getElementById('tooltip');
+                tooltip.style.opacity = 1;
+                
+                let tooltipText = `${word}: ${Math.round(score * 100)}%`;
+                if (!isValid) {
+                    tooltipText += ' (invalid word)';
+                }
+                
+                tooltip.textContent = tooltipText;
+                tooltip.style.left = `${e.pageX - visualization.getBoundingClientRect().left}px`;
+                tooltip.style.top = `${e.pageY - visualization.getBoundingClientRect().top - 30}px`;
+            });
+            
+            guess.addEventListener('mouseleave', () => {
+                document.getElementById('tooltip').style.opacity = 0;
+            });
+            
+            // Add to visualization
+            visualization.appendChild(guess);
+            
+            // Draw connection lines to anchor words (only for the better words)
+            if (score > 0.3 && isValid) {
+                drawConnectionToAnchors(guess);
+            }
+        }
+        
+        // Draw connection lines from a guess to the anchor words
+        function drawConnectionToAnchors(guessEl) {
+            const anchors = document.querySelectorAll('.anchor-word');
+            
+            anchors.forEach(anchor => {
+                const line = document.createElement('div');
+                line.className = 'connection-line';
+                
+                const anchorRect = anchor.getBoundingClientRect();
+                const guessRect = guessEl.getBoundingClientRect();
+                const vizRect = visualization.getBoundingClientRect();
+                
+                // Calculate relative positions
+                const anchorX = anchorRect.left + anchorRect.width/2 - vizRect.left;
+                const anchorY = anchorRect.top + anchorRect.height/2 - vizRect.top;
+                const guessX = guessRect.left + guessRect.width/2 - vizRect.left;
+                const guessY = guessRect.top + guessRect.height/2 - vizRect.top;
+                
+                // Calculate line length and angle
+                const length = Math.sqrt(Math.pow(guessX - anchorX, 2) + Math.pow(guessY - anchorY, 2));
+                const angle = Math.atan2(guessY - anchorY, guessX - anchorX) * 180 / Math.PI;
+                
+                // Position and rotate line
+                line.style.width = `${length}px`;
+                line.style.height = '2px';
+                line.style.left = `${anchorX}px`;
+                line.style.top = `${anchorY}px`;
+                line.style.transform = `rotate(${angle}deg)`;
+                
+                visualization.appendChild(line);
+            });
+        }
+        
+        // Update the history list
+        function updateHistory() {
+            historyList.innerHTML = '';
+            
+            // Add each word to the history, sorted by score
+            guessedWords.forEach(({ word, score, valid, language }) => {
+                const li = document.createElement('li');
+                
+                // Mark invalid words
+                if (!valid) {
+                    li.className = 'invalid-word';
+                }
+                
+                li.textContent = `${word}: ${Math.round(score * 100)}%`;
+                
+                // Add language tag if it's different from current language
+                if (language && language !== currentLanguage) {
+                    const langTag = document.createElement('span');
+                    langTag.className = 'language-tag';
+                    langTag.textContent = language.toUpperCase();
+                    li.appendChild(langTag);
+                }
+                
+                historyList.appendChild(li);
+            });
+        }
+        
+        // Update game statistics
+        function updateStats() {
+            guessesCount.textContent = guessedWords.length;
+            bestScoreEl.textContent = `${Math.round(bestScore * 100)}%`;
+            bestWordEl.textContent = bestWord || '-';
+        }
+        
+        // Get a hint
+        async function showHint() {
+            if (!apiConnected) {
+                showError('API not connected. Please check the backend server.');
+                return;
+            }
+            
+            showLoading();
+            
+            try {
+                // Get hint from API
+                const response = await fetch(`${getApiBaseUrl()}/suggest_words`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        word_pair: [currentPair.word1, currentPair.word2],
+                        count: 5,
+                        language: currentLanguage
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Find words that haven't been guessed yet
+                const unguessedSuggestions = data.suggestions.filter(
+                    suggestion => !guessedWords.some(g => g.word === suggestion.word)
+                );
+                
+                if (unguessedSuggestions.length > 0) {
+                    // Get a random hint from the top 3 suggestions
+                    const hintIndex = Math.floor(Math.random() * Math.min(3, unguessedSuggestions.length));
+                    alert(`Hint: Try a word related to "${unguessedSuggestions[hintIndex].word}"`);
+                } else {
+                    alert(`Try to find a word that connects ${currentPair.word1} and ${currentPair.word2}!`);
+                }
+            } catch (error) {
+                console.error('Error getting hint:', error);
+                alert(`Try to find a word that connects ${currentPair.word1} and ${currentPair.word2}!`);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // Change word pair
+        function changeWordPair(word1, word2) {
+            currentPair = { word1, word2 };
+            initGame();
+        }
+        
+        // Change language
+        function changeLanguage(language) {
+            currentLanguage = language;
+            
+            // Update UI
+            languageBtns.forEach(btn => {
+                if (btn.dataset.lang === language) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            
+            // Show/hide appropriate word pairs
+            if (language === 'en') {
+                enPairsDiv.style.display = 'block';
+                frPairsDiv.style.display = 'none';
+            } else if (language === 'fr') {
+                enPairsDiv.style.display = 'none';
+                frPairsDiv.style.display = 'block';
+            }
+            
+            // Default to the first pair in the selected language
+            const firstPairBtn = language === 'en' 
+                ? enPairsDiv.querySelector('.word-pair-btn') 
+                : frPairsDiv.querySelector('.word-pair-btn');
+                
+            if (firstPairBtn) {
+                const word1 = firstPairBtn.dataset.word1;
+                const word2 = firstPairBtn.dataset.word2;
+                changeWordPair(word1, word2);
+            }
+        }
+        
+        // Handle tab switching
+        function switchTab(tabId) {
+            // Update buttons
+            tabButtons.forEach(btn => {
+                if (btn.dataset.tab === tabId) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            
+            // Update content
+            tabContents.forEach(content => {
+                if (content.id === tabId) {
+                    content.classList.add('active');
+                } else {
+                    content.classList.remove('active');
+                }
+            });
+        }
+        
+        // Create custom word pair
+        function createCustomPair() {
+            const word1 = customWord1Input.value.trim().toLowerCase();
+            const word2 = customWord2Input.value.trim().toLowerCase();
+            
+            if (!word1 || !word2) {
+                showError('Please enter both words.');
+                return;
+            }
+            
+            if (word1 === word2) {
+                showError('Please enter two different words.');
+                return;
+            }
+            
+            changeWordPair(word1, word2);
+            
+            // Clear inputs
+            customWord1Input.value = '';
+            customWord2Input.value = '';
+            
+            // Switch back to main tab
+            switchTab('preset-pairs');
+        }
+        
+        // Event listeners
+        submitBtn.addEventListener('click', submitWord);
+        wordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') submitWord();
+        });
+        hintBtn.addEventListener('click', showHint);
+        
+        // Add event listeners to language buttons
+        languageBtns.forEach(button => {
+            button.addEventListener('click', () => {
+                changeLanguage(button.dataset.lang);
+            });
+        });
+        
+        // Add event listeners to word pair buttons
+        wordPairButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const word1 = button.dataset.word1;
+                const word2 = button.dataset.word2;
+                changeWordPair(word1, word2);
+            });
+        });
+        
+        // Add event listener to custom pair button
+        customPairBtn.addEventListener('click', createCustomPair);
+        
+        // Add event listeners to tab buttons
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                switchTab(button.dataset.tab);
+            });
+        });
+        
+        // Start the game
+        document.addEventListener('DOMContentLoaded', async () => {
+            showLoading();
+            try {
+                const connected = await checkApiConnection();
+                if (!connected) {
+                    showError('Cannot connect to the backend server. Please ensure it is running at ' + getApiBaseUrl());
+                }
+                await initGame();
+            } catch (error) {
+                console.error('Initialization error:', error);
+                showError('Failed to initialize the game. Please check the console for details.');
+            } finally {
+                hideLoading();
+            }
+        });
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</body>
+</html>
