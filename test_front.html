@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compromix - Jeu d'énigmes sémantiques</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            color: #333;
+        }
+        h1, h2 {
+            color: #2c3e50;
+        }
+        .container {
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        input[type="text"] {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 100%;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .loading:after {
+            content: ' .';
+            animation: dots 1s steps(5, end) infinite;
+        }
+        @keyframes dots {
+            0%, 20% { content: ' .'; }
+            40% { content: ' ..'; }
+            60% { content: ' ...'; }
+            80%, 100% { content: ' ....'; }
+        }
+        .error {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .word-bubble {
+            display: inline-block;
+            padding: 5px 10px;
+            margin: 5px;
+            background-color: #e8f4fc;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .word-bubble:hover {
+            background-color: #bde0fa;
+        }
+        .progress-bar-container {
+            width: 100%;
+            background-color: #e0e0e0;
+            height: 20px;
+            border-radius: 10px;
+            margin: 10px 0;
+        }
+        .progress-bar {
+            height: 100%;
+            border-radius: 10px;
+            background-color: #2ecc71;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <h1>Compromix</h1>
+    <p>Un jeu d'énigmes sémantiques qui explore le concept de mots proches dans l'espace sémantique.</p>
+    
+    <div class="container">
+        <h2>Trouver des mots intermédiaires</h2>
+        <div>
+            <div>
+                <label for="word1">Mot 1:</label>
+                <input type="text" id="word1" placeholder="Ex: maison">
+            </div>
+            <div>
+                <label for="word2">Mot 2:</label>
+                <input type="text" id="word2" placeholder="Ex: voiture">
+            </div>
+            <div>
+                <label for="numWords">Nombre de mots à trouver:</label>
+                <input type="number" id="numWords" value="10" min="1" max="50">
+            </div>
+            <button id="findBtn">Trouver des mots intermédiaires</button>
+        </div>
+        <div class="loading" id="loading">Recherche en cours</div>
+        <div id="error" class="error"></div>
+        <div id="results">
+            <table id="resultsTable" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Mot</th>
+                        <th>Similarité</th>
+                        <th>Position</th>
+                        <th>% Idéal</th>
+                    </tr>
+                </thead>
+                <tbody id="resultsBody"></tbody>
+            </table>
+        </div>
+    </div>
+    
+    <div class="container">
+        <h2>Tester la similarité entre deux mots</h2>
+        <div>
+            <div>
+                <label for="simWord1">Mot 1:</label>
+                <input type="text" id="simWord1" placeholder="Ex: chat">
+            </div>
+            <div>
+                <label for="simWord2">Mot 2:</label>
+                <input type="text" id="simWord2" placeholder="Ex: chien">
+            </div>
+            <button id="simBtn">Calculer la similarité</button>
+        </div>
+        <div id="simResult"></div>
+        <div class="progress-bar-container" id="simProgressContainer" style="display: none;">
+            <div class="progress-bar" id="simProgressBar"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Évaluer un mot entre deux autres</h2>
+        <div>
+            <div>
+                <label for="scoreWord">Mot à évaluer:</label>
+                <input type="text" id="scoreWord" placeholder="Ex: appartement">
+            </div>
+            <div>
+                <label for="scoreWord1">Mot 1:</label>
+                <input type="text" id="scoreWord1" placeholder="Ex: maison">
+            </div>
+            <div>
+                <label for="scoreWord2">Mot 2:</label>
+                <input type="text" id="scoreWord2" placeholder="Ex: hôtel">
+            </div>
+            <button id="scoreBtn">Calculer le score</button>
+        </div>
+        <div id="scoreResult"></div>
+    </div>
+
+    <script>
+        // API endpoint base URL (change if needed)
+        const API_BASE_URL = 'http://localhost:8000';
+
+        // DOM elements
+        const findBtn = document.getElementById('findBtn');
+        const word1Input = document.getElementById('word1');
+        const word2Input = document.getElementById('word2');
+        const numWordsInput = document.getElementById('numWords');
+        const loadingEl = document.getElementById('loading');
+        const errorEl = document.getElementById('error');
+        const resultsTable = document.getElementById('resultsTable');
+        const resultsBody = document.getElementById('resultsBody');
+        
+        const simBtn = document.getElementById('simBtn');
+        const simWord1Input = document.getElementById('simWord1');
+        const simWord2Input = document.getElementById('simWord2');
+        const simResultEl = document.getElementById('simResult');
+        const simProgressContainer = document.getElementById('simProgressContainer');
+        const simProgressBar = document.getElementById('simProgressBar');
+        
+        const scoreBtn = document.getElementById('scoreBtn');
+        const scoreWordInput = document.getElementById('scoreWord');
+        const scoreWord1Input = document.getElementById('scoreWord1');
+        const scoreWord2Input = document.getElementById('scoreWord2');
+        const scoreResultEl = document.getElementById('scoreResult');
+
+        // Function to find intermediate words
+        findBtn.addEventListener('click', async () => {
+            const word1 = word1Input.value.trim();
+            const word2 = word2Input.value.trim();
+            const n = parseInt(numWordsInput.value);
+            
+            if (!word1 || !word2) {
+                errorEl.textContent = "Veuillez entrer deux mots.";
+                return;
+            }
+            
+            errorEl.textContent = "";
+            loadingEl.style.display = "block";
+            resultsTable.style.display = "none";
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/intermediate_words`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ word1, word2, n })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    displayResults(data.intermediate_words);
+                } else {
+                    throw new Error(data.detail || "Une erreur s'est produite.");
+                }
+            } catch (error) {
+                errorEl.textContent = error.message;
+            } finally {
+                loadingEl.style.display = "none";
+            }
+        });
+
+        // Function to display intermediate words results
+        function displayResults(words) {
+            resultsBody.innerHTML = '';
+            
+            if (words.length === 0) {
+                errorEl.textContent = "Aucun mot intermédiaire trouvé.";
+                return;
+            }
+            
+            words.forEach(item => {
+                const tr = document.createElement('tr');
+                
+                const wordTd = document.createElement('td');
+                const wordBubble = document.createElement('span');
+                wordBubble.className = 'word-bubble';
+                wordBubble.textContent = item.word;
+                wordBubble.addEventListener('click', () => {
+                    navigator.clipboard.writeText(item.word)
+                        .then(() => {
+                            const originalColor = wordBubble.style.backgroundColor;
+                            wordBubble.style.backgroundColor = '#2ecc71';
+                            setTimeout(() => {
+                                wordBubble.style.backgroundColor = originalColor;
+                            }, 500);
+                        });
+                });
+                wordTd.appendChild(wordBubble);
+                
+                const simTd = document.createElement('td');
+                simTd.textContent = (item.similarity * 100).toFixed(2) + '%';
+                
+                const posTd = document.createElement('td');
+                posTd.textContent = (item.position * 100).toFixed(2) + '%';
+                
+                const idealTd = document.createElement('td');
+                idealTd.textContent = item.ideal_percentage.toFixed(2) + '%';
+                
+                tr.appendChild(wordTd);
+                tr.appendChild(simTd);
+                tr.appendChild(posTd);
+                tr.appendChild(idealTd);
+                
+                resultsBody.appendChild(tr);
+            });
+            
+            resultsTable.style.display = "table";
+        }
+
+        // Function to calculate similarity
+        simBtn.addEventListener('click', async () => {
+            const word1 = simWord1Input.value.trim();
+            const word2 = simWord2Input.value.trim();
+            
+            if (!word1 || !word2) {
+                simResultEl.innerHTML = "<span class='error'>Veuillez entrer deux mots.</span>";
+                return;
+            }
+            
+            simResultEl.textContent = "Calcul en cours...";
+            simProgressContainer.style.display = "none";
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/similarity`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ word1, word2 })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    const similarity = data.similarity;
+                    simResultEl.textContent = `Similarité entre "${word1}" et "${word2}": ${(similarity * 100).toFixed(2)}%`;
+                    
+                    // Update progress bar
+                    simProgressContainer.style.display = "block";
+                    simProgressBar.style.width = `${similarity * 100}%`;
+                } else {
+                    throw new Error(data.detail || "Une erreur s'est produite.");
+                }
+            } catch (error) {
+                simResultEl.innerHTML = `<span class='error'>${error.message}</span>`;
+            }
+        });
+
+        // Function to calculate score
+        scoreBtn.addEventListener('click', async () => {
+            const word = scoreWordInput.value.trim();
+            const word1 = scoreWord1Input.value.trim();
+            const word2 = scoreWord2Input.value.trim();
+            
+            if (!word || !word1 || !word2) {
+                scoreResultEl.innerHTML = "<span class='error'>Veuillez remplir tous les champs.</span>";
+                return;
+            }
+            
+            scoreResultEl.textContent = "Calcul en cours...";
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/score`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ word, word1, word2 })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    scoreResultEl.innerHTML = `
+                        <p>Score de "${word}" entre "${word1}" et "${word2}":</p>
+                        <ul>
+                            <li>Similarité au point médian: ${(data.score * 100).toFixed(2)}%</li>
+                            <li>Position relative: ${(data.position * 100).toFixed(2)}% du chemin de "${word1}" vers "${word2}"</li>
+                            <li>Pourcentage d'idéalité: ${data.ideal_percentage.toFixed(2)}%</li>
+                        </ul>
+                    `;
+                } else {
+                    throw new Error(data.detail || "Une erreur s'est produite.");
+                }
+            } catch (error) {
+                scoreResultEl.innerHTML = `<span class='error'>${error.message}</span>`;
+            }
+        });
+    </script>
+</body>
+</html>
