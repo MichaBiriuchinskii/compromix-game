@@ -1,6 +1,32 @@
 # Word Connections Game
 
-A word embedding game where players find words that are semantically in-between two given words.
+Compromix is a strategic word game where players propose terms to gradually converge on a middle ground between two opposing concepts, aiming to find the perfect "compromise" word.
+It would challenge players' sense of nuance, negotiation, and semantic balance, blending logic with creativity.
+
+### Compromix: Examples of Opposing Concepts and Middle-Ground Words
+
+1. **War** ↔ **Peace**  
+   → *Middle Ground:* **Truce**  
+   _(temporary cessation, not full peace nor ongoing war)_
+
+2. **Hot** ↔ **Cold**  
+   → *Middle Ground:* **Warm** or **Lukewarm**  
+   _(a literal midpoint in temperature)_
+
+3. **Freedom** ↔ **Control**  
+   → *Middle Ground:* **Regulation**  
+   _(structured freedom within boundaries)_
+
+4. **Rich** ↔ **Poor**  
+   → *Middle Ground:* **Middle-class** or **Modest**  
+   _(neither extreme wealth nor poverty)_
+
+5. **Optimism** ↔ **Pessimism**  
+   → *Middle Ground:* **Realism**  
+   _(accepting both positive and negative possibilities)_
+
+
+
 
 ## Setup for Local Development
 
